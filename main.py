@@ -3,6 +3,21 @@ from telethon.tl.types import ChannelParticipantsAdmins
 import random, asyncio, json, os
 from dataclasses import dataclass, field
 from typing import Optional, Dict
+import threading
+from flask import Flask
+
+# Dummy Flask app for Render
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_web():
+    app.run(host="0.0.0.0", port=10000)
+
+# Start flask server in background thread
+threading.Thread(target=run_web).start()
 
 # ---------------- CONFIG ----------------
 API_ID = int(os.environ.get("API_ID", 0))
