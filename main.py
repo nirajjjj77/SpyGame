@@ -729,5 +729,30 @@ async def reset_game(chat_id: int):
     game_states[chat_id] = GameState()
 
 
-print("🤖 Bot is running...")
-client.run_until_disconnected()
+import asyncio
+
+async def keep_alive():
+    import aiohttp
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                await session.get("https://spygame-bjok.onrender.com")
+                print("🌍 Keep-alive ping sent!")
+        except Exception as e:
+            print(f"⚠️ Keep-alive failed: {e}")
+        await asyncio.sleep(300)  # 5 min gap
+
+async def main_loop():
+    # Start keep-alive background task
+    asyncio.create_task(keep_alive())
+
+    while True:
+        try:
+            print("🤖 Connecting bot...")
+            await client.run_until_disconnected()
+        except Exception as e:
+            print(f"⚠️ Bot crashed: {e}. Restarting in 5s...")
+            await asyncio.sleep(5)
+
+if __name__ == "__main__":
+    asyncio.run(main_loop())
