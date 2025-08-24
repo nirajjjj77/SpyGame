@@ -1,6 +1,6 @@
-from telethon import TelegramClient, events, Button
+from telethon import TelegramClient, events, Button, functions
 from telethon.tl.types import ChannelParticipantsAdmins
-import random, asyncio, json, os
+import random, asyncio, json, os, sys
 from dataclasses import dataclass, field
 from typing import Optional, Dict
 import threading
@@ -35,6 +35,16 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OWNER_ID = int(os.environ.get("OWNER_ID", 0))
 
 client = TelegramClient('game_bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+
+async def heartbeat():
+    while True:
+        try:
+            # Telegram DC ko ping bhejna
+            await client(functions.help.GetNearestDcRequest())
+        except Exception as e:
+            print("⚠️ Heartbeat failed, restarting bot...", e)
+            os.execv(sys.executable, ['python'] + sys.argv)  # self-restart
+        await asyncio.sleep(120)  # har 2 min me check
 
 # ---- Per-Chat Game State ----
 @dataclass
@@ -730,4 +740,5 @@ async def reset_game(chat_id: int):
 
 
 print("🤖 Bot is running...")
+client.loop.create_task(heartbeat())
 client.run_until_disconnected()
