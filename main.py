@@ -5,6 +5,12 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict
 import threading
 from flask import Flask
+from db import (
+    init_db,
+    add_user, get_all_users,
+    get_custom_locations_db,
+    add_custom_location_db, remove_custom_location_db, reset_custom_locations_db
+)
 
 # Dummy Flask app for Render
 app = Flask(__name__)
@@ -18,6 +24,9 @@ def run_web():
 
 # Start flask server in background thread
 threading.Thread(target=run_web).start()
+
+# Initialize database tables
+init_db()
 
 # ---------------- CONFIG ----------------
 API_ID = int(os.environ.get("API_ID", 0))
@@ -68,92 +77,16 @@ DEFAULT_LOCATIONS = [
     "Market Bazaar 🕌", "Village 🏘️"
 ]
 
-LOCATIONS_FILE = "locations.json"
 
-def _load_locations_db():
-    if os.path.exists(LOCATIONS_FILE):
-        try:
-            with open(LOCATIONS_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return data if isinstance(data, dict) else {}
-        except Exception:
-            return {}
-    return {}
-
-def _save_locations_db(db):
-    try:
-        with open(LOCATIONS_FILE, "w", encoding="utf-8") as f:
-            json.dump(db, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
-
-_locations_db = _load_locations_db()
-
-def get_locations_for_chat(chat_id):
-    """Return DEFAULT_LOCATIONS + unique custom locations for this chat."""
+def build_locations_for_chat(chat_id: int):
     base = DEFAULT_LOCATIONS.copy()
-    custom = _locations_db.get(str(chat_id), [])
+    custom = get_custom_locations_db(chat_id)
     for loc in custom:
         if loc not in base:
             base.append(loc)
     return base
 
-def add_custom_location(chat_id, name: str):
-    """Add custom location (case-insensitive duplicate safe)."""
-    name = name.strip()
-    if not name:
-        return False, "Name cannot be empty."
-    # Already exists in defaults?
-    if any(name.lower() == d.lower() for d in DEFAULT_LOCATIONS):
-        return False, "Already exists in default list."
-    cid = str(chat_id)
-    cur = _locations_db.get(cid, [])
-    if any(name.lower() == c.lower() for c in cur):
-        return False, "Already added."
-    cur.append(name)
-    _locations_db[cid] = cur
-    _save_locations_db(_locations_db)
-    return True, None
 
-def remove_custom_location(chat_id, name: str):
-    """Remove only custom locations (defaults cannot be removed)."""
-    cid = str(chat_id)
-    cur = _locations_db.get(cid, [])
-    idx = next((i for i, v in enumerate(cur) if v.lower() == name.strip().lower()), None)
-    if idx is None:
-        return False, "Not found among custom locations."
-    cur.pop(idx)
-    if cur:
-        _locations_db[cid] = cur
-    else:
-        _locations_db.pop(cid, None)
-    _save_locations_db(_locations_db)
-    return True, None
-
-def reset_custom_locations(chat_id):
-    """Clear all custom locations for this chat."""
-    _locations_db.pop(str(chat_id), None)
-    _save_locations_db(_locations_db)
-
-USERS_FILE = "users.json"
-
-def _load_users():
-    if os.path.exists(USERS_FILE):
-        try:
-            with open(USERS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            return []
-    return []
-
-def _save_users(users):
-    try:
-        with open(USERS_FILE, "w", encoding="utf-8") as f:
-            json.dump(users, f, ensure_ascii=False, indent=2)
-    except:
-        pass
-
-known_users = _load_users()
 
 # ---- Anti-Spam / Throttling ----
 COMMAND_COOLDOWN = 1.5   # seconds between command presses per user
@@ -218,11 +151,10 @@ async def start_cmd(event):
     )
     await event.respond(text, parse_mode="markdown")
 
-    # Save user id
+    # Save user id (persistent in Postgres)
     uid = event.sender_id
-    if uid not in known_users:
-        known_users.append(uid)
-        _save_users(known_users)
+    await asyncio.to_thread(add_user, uid)
+
 
 
 @client.on(events.NewMessage(pattern='/startgame'))
@@ -311,7 +243,7 @@ async def addlocation_cmd(event):
         await event.respond("⚠️ Usage: /addlocation <name>")
         return
 
-    ok, err = add_custom_location(event.chat_id, args[1].strip())
+    ok, err = add_custom_location_db(event.chat_id, args[1].strip())
     if ok:
         await event.respond(f"✅ Added location: *{args[1].strip()}*", parse_mode="markdown")
     else:
@@ -330,7 +262,7 @@ async def removelocation_cmd(event):
         await event.respond("⚠️ Usage: /removelocation <name>")
         return
 
-    ok, err = remove_custom_location(event.chat_id, args[1].strip())
+    ok, err = remove_custom_location_db(event.chat_id, args[1].strip())
     if ok:
         await event.respond(f"✅ Removed location: *{args[1].strip()}*", parse_mode="markdown")
     else:
@@ -340,7 +272,7 @@ async def removelocation_cmd(event):
 async def listlocations_cmd(event):
     if await throttle(event, 'listlocations'): return
 
-    pool = get_locations_for_chat(event.chat_id)
+    pool = build_locations_for_chat(event.chat_id)
     if not pool:
         await event.respond("ℹ️ No locations available.")
         return
@@ -356,7 +288,7 @@ async def resetlocations_cmd(event):
         await event.respond("❌ Only group admins can reset custom locations.")
         return
 
-    reset_custom_locations(event.chat_id)
+    reset_custom_locations_db(event.chat_id)
     await event.respond("♻️ Custom locations cleared for this chat. Using defaults now.")
 
 
@@ -473,7 +405,7 @@ async def begin_game(event):
         await event.respond("⚠️ Need at least 3 players to start!")
         return
 
-    loc_pool = get_locations_for_chat(event.chat_id)
+    loc_pool = build_locations_for_chat(event.chat_id)
     location = random.choice(loc_pool)
     spy_list = []
     fake_civilian = None
@@ -772,7 +704,8 @@ async def broadcast_cmd(event):
     sent = 0
     failed = 0
 
-    for uid in known_users:
+    user_ids = await asyncio.to_thread(get_all_users)
+    for uid in user_ids:
         try:
             await client.send_message(uid, msg)
             sent += 1
