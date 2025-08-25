@@ -127,25 +127,41 @@ def mention_name(user):
 @client.on(events.NewMessage(pattern='^/start$'))
 async def start_cmd(event):
     if await throttle(event, 'start'): return
-    text = (
-        "👋 Welcome to **Spy x Civilians Bot!**\n\n"
-        "🎮 I’m a *Group Game Bot* — you can’t play alone in private chat.\n\n"
-        "➕ Add me to a group and start playing with your friends!\n\n"
-        "👉 Start a new game with /startgame (once bot is added).\n"
-        "👉 Read the rules with /rules\n"
-        "👉 For help: /help\n"
-        "⚠️ Note: The game is played only in groups, but some information "
-        "will be sent to you here in private chat.\n\n"
-        "📞 For questions or bot requests: @NKContactBot"
-    )
+    if event.is_private:
+        # --- Private chat only ---    
+        text = (
+            "👋 Welcome to **Spy x Civilians Bot!**\n\n"
+            "🎮 I’m a **Group Game Bot** — you can’t play alone in private chat.\n\n"
+            "➕ Add me to a group and start playing with your friends!\n\n"
+            "👉 Start a new game with /startgame (once bot is added).\n"
+            "👉 Read the rules with /rules\n"
+            "👉 For help: /help\n"
+            "⚠️ Note: The game is played only in groups, but some information "
+            "will be sent to you here in private chat.\n\n"
+            "📞 For questions or bot requests: @NKContactBot"
+        )
     
 
-    # --- Inline button ---
-    keyboard = [
-        [Button.url("➕ Add me to a Group", url="https://t.me/agentamongus_bot?startgroup=true")]
-    ]
+        # --- Inline button ---
+        keyboard = [
+            [Button.url("➕ Add me to a Group", url="https://t.me/agentamongus_bot?startgroup=true")]
+        ]
 
-    await event.respond(text, parse_mode="markdown", buttons=keyboard)
+        await event.respond(text, parse_mode="markdown", buttons=keyboard)
+    
+    else:
+        # Group chat
+        text = (
+            "👥 Hello group! I’m **Spy x Civilians Bot** 🕵️\n\n"
+            "🎮 This is a *group game bot* — play together with your friends here!\n\n"
+            "👉 Start a new game with /startgame\n"
+            "👉 Read the rules with /rules\n"
+            "👉 For help: /help\n\n"
+            "⚠️ Note: Some private role information will be sent to players in DM. "
+            "So every player must /start me in private before the game begins!\n\n"
+            "📞 For questions or bot requests: @NKContactBot"
+        )
+        await event.respond(text, parse_mode="markdown")
 
     # Save user id (persistent in Postgres)
     uid = event.sender_id
