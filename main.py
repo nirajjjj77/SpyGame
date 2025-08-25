@@ -744,16 +744,13 @@ async def keep_alive():
             print(f"⚠️ Keep-alive failed: {e}")
         await asyncio.sleep(300)  # every 5 minutes
 
-async def main_loop():
-    # Start keep-alive background task
-    asyncio.create_task(keep_alive())
-
-    # Start bot (Telethon auto-reconnects, no need for while True loop)
-    print("🤖 Connecting bot...")
-    await client.run_until_disconnected()
-
 if __name__ == "__main__":
-    # Run flask in background process
+    # Run Flask in separate process
     multiprocessing.Process(target=run_web, daemon=True).start()
-    # Run asyncio bot loop
-    asyncio.run(main_loop())
+
+    # Start keep-alive inside Telethon loop
+    client.loop.create_task(keep_alive())
+
+    # Run bot (manages its own event loop)
+    print("🤖 Connecting bot...")
+    client.run_until_disconnected()
