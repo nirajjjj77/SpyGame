@@ -12,18 +12,6 @@ from db import (
     add_custom_location_db, remove_custom_location_db, reset_custom_locations_db
 )
 
-# Dummy Flask app for Render
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Bot is running!"
-
-def run_web():
-    app.run(host="0.0.0.0", port=10000)
-
-# Start flask server in background thread
-threading.Thread(target=run_web).start()
 
 # Initialize database tables
 init_db()
@@ -729,10 +717,24 @@ async def reset_game(chat_id: int):
     game_states[chat_id] = GameState()
 
 
-import asyncio
+# ---------------- FLASK KEEP-ALIVE + MAIN LOOP ----------------
+import multiprocessing, asyncio
+import aiohttp
+from flask import Flask
+
+# Dummy Flask app for Render health-check
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_web():
+    # Run flask on separate process (not thread, avoids asyncio loop conflicts)
+    app.run(host="0.0.0.0", port=10000)
 
 async def keep_alive():
-    import aiohttp
+    """Periodically ping the Render URL to prevent sleeping"""
     while True:
         try:
             async with aiohttp.ClientSession() as session:
@@ -740,19 +742,18 @@ async def keep_alive():
                 print("🌍 Keep-alive ping sent!")
         except Exception as e:
             print(f"⚠️ Keep-alive failed: {e}")
-        await asyncio.sleep(300)  # 5 min gap
+        await asyncio.sleep(300)  # every 5 minutes
 
 async def main_loop():
     # Start keep-alive background task
     asyncio.create_task(keep_alive())
 
-    while True:
-        try:
-            print("🤖 Connecting bot...")
-            await client.run_until_disconnected()
-        except Exception as e:
-            print(f"⚠️ Bot crashed: {e}. Restarting in 5s...")
-            await asyncio.sleep(5)
+    # Start bot (Telethon auto-reconnects, no need for while True loop)
+    print("🤖 Connecting bot...")
+    await client.run_until_disconnected()
 
 if __name__ == "__main__":
+    # Run flask in background process
+    multiprocessing.Process(target=run_web, daemon=True).start()
+    # Run asyncio bot loop
     asyncio.run(main_loop())
