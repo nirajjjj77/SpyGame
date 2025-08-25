@@ -128,7 +128,7 @@ def mention_name(user):
 async def start_cmd(event):
     if await throttle(event, 'start'): return
     text = (
-        "👋 Welcome to *Spy x Civilians* Bot!\n\n"
+        "👋 Welcome to **Spy x Civilians** Bot!\n\n"
         "🎮 This is a group game where one player is the Spy 🕵️ "
         "and the rest are Civilians 👥.\n\n"
         "👉 To start a new game in a group, use: /startgame\n"
@@ -137,6 +137,7 @@ async def start_cmd(event):
         "⚠️ Note: The game is played only in groups, but some information "
         "will be sent to you here in private chat."
     )
+    text += "\n\n📞 For questions or bot requests: @NKContactBot"
     await event.respond(text, parse_mode="markdown")
 
     # Save user id (persistent in Postgres)
@@ -179,7 +180,7 @@ async def start_game(event):
 async def help_cmd(event):
     if await throttle(event, 'help'): return
     text = (
-        "📖 *Spy x Civilians - Help*\n\n"
+        "📖 **Spy x Civilians - Help**\n\n"
         "/startgame - Start a new game\n"
         "/join - Join the current game\n"
         "/begin - Begin the game (assign roles)\n"
@@ -191,12 +192,13 @@ async def help_cmd(event):
         "/stopgame - Force end the game (admins/host only)\n"
         "/rules - Show game rules\n"
         "\n"
-        "🧭 *Custom Locations* (per group):\n"
+        "🧭 **Custom Locations** (per group):\n"
         "/addlocation <name> - Add a custom location (admins only)\n"
         "/removelocation <name> - Remove a custom location (admins only)\n"
         "/listlocations - Show all locations (default + custom)\n"
         "/resetlocations - Clear all custom locations (admins only)\n"
     )
+    text += "\n\n📞 For questions or bot requests: @NKContactBot"
     await event.respond(text, parse_mode="markdown")
 
 
@@ -204,7 +206,7 @@ async def help_cmd(event):
 async def rules_cmd(event):
     if await throttle(event, 'rules'): return
     rules = (
-        "📜 *Spy x Civilians Rules*\n\n"
+        "📜 **Spy x Civilians Rules**\n\n"
         "- One or more players are Spies 🕵️.\n"
         "- Civilians 👥 know a secret location.\n"
         "- Spies don't know the location and must deduce it.\n"
@@ -265,7 +267,7 @@ async def listlocations_cmd(event):
         await event.respond("ℹ️ No locations available.")
         return
 
-    out = "🧭 *Locations for this chat:*\n" + "\n".join(f"• {x}" for x in pool)
+    out = "🧭 **Locations for this chat:**\n" + "\n".join(f"• {x}" for x in pool)
     await event.respond(out, parse_mode="markdown")
 
 @client.on(events.NewMessage(pattern='^/resetlocations$'))
@@ -420,7 +422,7 @@ async def begin_game(event):
         try:
             if p in spy_list:
                 msg = (
-                    "🕵️‍♂️ *Secret Role Assigned!*\n\n"
+                    "🕵️‍♂️ **Secret Role Assigned!**\n\n"
                     "You are the *SPY* 😈\n"
                     "❓ Your mission: Blend in, ask smart questions, and try to *guess the location*.\n\n"
                     "🗣️ Be careful… if they find you, civilians win!"
@@ -431,9 +433,9 @@ async def begin_game(event):
             elif fake_civilian == p:
                 wrong_location = random.choice([loc for loc in loc_pool if loc != location])
                 msg = (
-                    "👥 *Secret Role Assigned!*\n\n"
-                    "You are a *Civilian* 🙌\n"
-                    f"📍 The secret location is: *{wrong_location}*\n\n"
+                    "👥 **Secret Role Assigned!**\n\n"
+                    "You are a **Civilian** 🙌\n"
+                    f"📍 The secret location is: **{wrong_location}**\n\n"
                     "🎯 Your mission: Spot the Spy by asking tricky questions and defending yourself."
                 )
                 await client.send_message(p, msg, parse_mode="markdown")
@@ -441,9 +443,9 @@ async def begin_game(event):
 
             else:
                 msg = (
-                    "👥 *Secret Role Assigned!*\n\n"
-                    "You are a *Civilian* 🙌\n"
-                    f"📍 The secret location is: *{location}*\n\n"
+                    "👥 **Secret Role Assigned!**\n\n"
+                    "You are a **Civilian** 🙌\n"
+                    f"📍 The secret location is: **{location}**\n\n"
                     "🎯 Your mission: Spot the Spy by asking tricky questions and defending yourself."
                 )
                 await client.send_message(p, msg, parse_mode="markdown")
@@ -476,9 +478,9 @@ async def begin_game(event):
     s.roles = temp_roles
 
     await event.respond(
-        "🎉 *All roles have been secretly assigned!*\n\n"
+        "🎉 **All roles have been secretly assigned!**\n\n"
         f"🗣️ Discussion Phase has started.\n"
-        f"⏳ Time: *{s.discussion_time//60}:{s.discussion_time%60:02d} minutes*\n\n"
+        f"⏳ Time: **{s.discussion_time//60}:{s.discussion_time%60:02d} minutes**\n\n"
         "👉 Ask smart questions, confuse the Spy, and defend yourself!",
         parse_mode="markdown"
     )
