@@ -22,6 +22,8 @@ API_HASH = os.environ.get("API_HASH", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OWNER_ID = int(os.environ.get("OWNER_ID", 0))
 
+BOT_USERNAME = "agentamongus_bot"
+
 client = TelegramClient('game_bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
 # ---- Per-Chat Game State ----
@@ -124,7 +126,7 @@ def mention_name(user):
 
 
 # ---------------- HANDLERS ----------------
-@client.on(events.NewMessage(pattern='^/start$'))
+@client.on(events.NewMessage(pattern=fr"^/start(@{BOT_USERNAME})?$"))
 async def start_cmd(event):
     if await throttle(event, 'start'): return
     if event.is_private:
@@ -168,7 +170,7 @@ async def start_cmd(event):
     await asyncio.to_thread(add_user, uid)
 
 
-@client.on(events.NewMessage(pattern='/startgame'))
+@client.on(events.NewMessage(pattern=fr"^/startgame(@{BOT_USERNAME})?$"))
 async def start_game(event):
     if await throttle(event, 'startgame'): return
     s = get_state(event.chat_id)
@@ -198,7 +200,7 @@ async def start_game(event):
     )
 
 
-@client.on(events.NewMessage(pattern='^/help$'))
+@client.on(events.NewMessage(pattern=fr"^/help(@{BOT_USERNAME})?$"))
 async def help_cmd(event):
     if await throttle(event, 'help'): return
     text = (
@@ -224,7 +226,7 @@ async def help_cmd(event):
     await event.respond(text, parse_mode="markdown")
 
 
-@client.on(events.NewMessage(pattern='^/rules$'))
+@client.on(events.NewMessage(pattern=fr"^/rules(@{BOT_USERNAME})?$"))
 async def rules_cmd(event):
     if await throttle(event, 'rules'): return
     rules = (
@@ -240,7 +242,7 @@ async def rules_cmd(event):
     await event.respond(rules, parse_mode="markdown")
 
 
-@client.on(events.NewMessage(pattern='/addlocation'))
+@client.on(events.NewMessage(pattern=fr'^/addlocation(@{BOT_USERNAME})?($| )'))
 async def addlocation_cmd(event):
     # Anti-spam
     if await throttle(event, 'addlocation'): return
@@ -261,7 +263,7 @@ async def addlocation_cmd(event):
     else:
         await event.respond(f"⚠️ {err}")
 
-@client.on(events.NewMessage(pattern='/removelocation'))
+@client.on(events.NewMessage(pattern=fr'^/removelocation(@{BOT_USERNAME})?($| )'))
 async def removelocation_cmd(event):
     if await throttle(event, 'removelocation'): return
 
@@ -280,7 +282,7 @@ async def removelocation_cmd(event):
     else:
         await event.respond(f"⚠️ {err}")
 
-@client.on(events.NewMessage(pattern='^/listlocations$'))
+@client.on(events.NewMessage(pattern=fr"^/listlocations(@{BOT_USERNAME})?$"))
 async def listlocations_cmd(event):
     if await throttle(event, 'listlocations'): return
 
@@ -292,7 +294,7 @@ async def listlocations_cmd(event):
     out = "🧭 **Locations for this chat:**\n" + "\n".join(f"• {x}" for x in pool)
     await event.respond(out, parse_mode="markdown")
 
-@client.on(events.NewMessage(pattern='^/resetlocations$'))
+@client.on(events.NewMessage(pattern=fr"^/resetlocations(@{BOT_USERNAME})?$"))
 async def resetlocations_cmd(event):
     if await throttle(event, 'resetlocations'): return
 
@@ -376,7 +378,7 @@ async def callback_handler(event):
             await finish_voting(event)
 
 
-@client.on(events.NewMessage(pattern='^/join$'))
+@client.on(events.NewMessage(pattern=fr"^/join(@{BOT_USERNAME})?$"))
 async def join_game(event):
     if await throttle(event, 'join'): return
     s = get_state(event.chat_id)
@@ -393,7 +395,7 @@ async def join_game(event):
         )
 
 
-@client.on(events.NewMessage(pattern='^/players$'))
+@client.on(events.NewMessage(pattern=fr"^/players(@{BOT_USERNAME})?$"))
 async def players_cmd(event):
     if await throttle(event, 'players'): return
     s = get_state(event.chat_id)
@@ -405,7 +407,7 @@ async def players_cmd(event):
         await event.respond("👥 Current Players:\n" + "\n".join(names), parse_mode="html")
 
 
-@client.on(events.NewMessage(pattern='^/begin$'))
+@client.on(events.NewMessage(pattern=fr"^/begin(@{BOT_USERNAME})?$"))
 async def begin_game(event):
     if await throttle(event, 'begin'): return
     s = get_state(event.chat_id)
@@ -532,7 +534,7 @@ async def begin_game(event):
     s.discussion_task = asyncio.create_task(discussion_timer())
 
 
-@client.on(events.NewMessage(pattern='^/status$'))
+@client.on(events.NewMessage(pattern=fr"^/status(@{BOT_USERNAME})?$"))
 async def status_cmd(event):
     if await throttle(event, 'status'): return
     s = get_state(event.chat_id)
@@ -552,7 +554,7 @@ async def status_cmd(event):
     )
 
 
-@client.on(events.NewMessage(pattern='^/extend$'))
+@client.on(events.NewMessage(pattern=fr"^/extend(@{BOT_USERNAME})?$"))
 async def extend_cmd(event):
     if await throttle(event, 'extend'): return
     s = get_state(event.chat_id)
@@ -563,7 +565,7 @@ async def extend_cmd(event):
     await event.respond(f"⏳ Discussion extended by 1 minute! (Now {s.discussion_time//60}:{s.discussion_time%60:02d} remaining)")
 
 
-@client.on(events.NewMessage(pattern='/guess'))
+@client.on(events.NewMessage(pattern=fr'^/guess(@{BOT_USERNAME})?($| )'))
 async def guess_cmd(event):
     if await throttle(event, 'guess'): return
     s = get_state(event.chat_id)
@@ -658,7 +660,7 @@ async def is_admin(event, user_id):
     return user_id in admin_ids or getattr(chat, "creator", False)
 
 
-@client.on(events.NewMessage(pattern='^/stopgame$'))
+@client.on(events.NewMessage(pattern=fr"^/stopgame(@{BOT_USERNAME})?$"))
 async def stop_game(event):
     if await throttle(event, 'stopgame'): return
     s = get_state(event.chat_id)
@@ -673,7 +675,7 @@ async def stop_game(event):
         await event.respond("❌ Only group admins or game starter can stop the game.")
 
 
-@client.on(events.NewMessage(pattern='^/remove($| )'))
+@client.on(events.NewMessage(pattern=fr'^/remove(@{BOT_USERNAME})?($| )'))
 async def remove_cmd(event):
     if await throttle(event, 'remove'): return
     s = get_state(event.chat_id)
